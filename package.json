@@ -1,7 +1,6 @@
 {
   "name": "clever-background-tasks",
   "version": "0.0.1",
-  "private": true,
   "dependencies": {
     "memcached": "~0.2.6",
     "moment": "~2.5.0"
@@ -21,9 +20,16 @@
   },
   "keywords": [
     "cleverstack-module",
+    "cleverstack",
+    "cleverstack backend",
+    "clevertech",
     "framework"
   ],
   "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CleverStack/clever-background-tasks.git"
+  },
   "bugs": {
     "url": "https://github.com/CleverStack/clever-background-tasks/pulls"
   },
