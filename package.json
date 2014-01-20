@@ -20,6 +20,7 @@
     "url": "git://github.com/CleverStack/clever-background-tasks.git"
   },
   "keywords": [
+    "cleverstack-module",
     "framework"
   ],
   "license": "BSD-2-Clause",
