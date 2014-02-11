@@ -1,6 +1,6 @@
 {
   "name": "clever-background-tasks",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "dependencies": {
     "memcached": "~0.2.6",
     "moment": "~2.5.0"
@@ -16,7 +16,7 @@
   "description": "",
   "repository": {
     "type": "git",
-    "url": "git://github.com/CleverStack/clever-background-tasks.git"
+    "url": "https://github.com/CleverStack/clever-background-tasks.git"
   },
   "keywords": [
     "cleverstack-module",
@@ -27,10 +27,6 @@
     "framework"
   ],
   "license": "BSD-2-Clause",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/CleverStack/clever-background-tasks.git"
-  },
   "bugs": {
     "url": "https://github.com/CleverStack/clever-background-tasks/pulls"
   },
