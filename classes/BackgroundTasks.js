@@ -33,7 +33,7 @@ module.exports = Class.extend(
     init: function( env ) {
         debug( 'Constructor called' );
         this.env = env;
-        this.config = env.config['background-tasks'];
+        this.config = env.config['clever-background-tasks'];
         this.isMaster = false;
         this.masterTasksAreRunning = false;
         this.nonMastermasterTasksAreRunning = false;

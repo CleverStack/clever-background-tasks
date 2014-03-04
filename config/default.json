@@ -1,5 +1,5 @@
 {
-	"background-tasks": {
+	"clever-background-tasks": {
         "on" : false,
 
         "interval": 2500,
