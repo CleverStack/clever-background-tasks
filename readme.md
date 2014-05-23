@@ -1,4 +1,4 @@
-# Cleverstack clever-background-tasks module
+# Cleverstack background task's module
 Background Tasks (processes) for the Cleverstack ecosystem.
 
 ## Install 
