@@ -1,35 +1,35 @@
 {
   "name": "clever-background-tasks",
-  "version": "0.0.2",
-  "dependencies": {
-    "memcached": "~0.2.6",
-    "moment": "~2.5.0"
-  },
+  "description": "Background processing for the CleverStack Framework",
+  "version": "0.9.0",
+  "main": "module.js",
   "author": {
-    "name": "Clevertech",
-    "email": "info@clevertech.biz",
-    "web": "http://www.clevertech.biz"
+    "name": "CleverStack",
+    "email": "admin@cleverstack.io",
+    "web": "http://www.cleverstack.io"
   },
   "collaborators": [
-    "Richard Gustin <richard@clevertech.biz>"
+    "Richard Gustin <richard.gustin86@gmail.com>"
   ],
-  "description": "",
   "repository": {
     "type": "git",
     "url": "https://github.com/CleverStack/clever-background-tasks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CleverStack/clever-background-tasks/issues"
   },
   "keywords": [
     "cleverstack-module",
     "cleverstack",
     "cleverstack backend",
     "backend",
-    "clevertech",
     "framework"
   ],
   "license": "BSD-2-Clause",
-  "bugs": {
-    "url": "https://github.com/CleverStack/clever-background-tasks/pulls"
+  "dependencies": {
+    "memcached": "~0.2.6",
+    "redis": "0.10.3",
+    "moment": "~2.5.0"
   },
-  "main": "module.js",
   "devDependencies": {}
 }

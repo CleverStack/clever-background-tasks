@@ -1,5 +1,3 @@
-var Module = require( 'classes' ).ModuleClass.extend({
-	
-});
+module.exports = ( require( 'classes' ).Module ).extend({
 
-module.exports = new Module( 'clever-background-tasks', injector );
+});

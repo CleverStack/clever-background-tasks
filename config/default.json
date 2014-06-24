@@ -1,6 +1,6 @@
 {
 	"clever-background-tasks": {
-        "on" : false,
+        "on" : true,
 
         "interval": 2500,
 
@@ -12,6 +12,10 @@
 
         "memcache": {
         	"host": "localhost:11211"
+        },
+
+        "redis": {
+
         }
     }
 }

@@ -1,12 +1,10 @@
-var path = require( 'path' )
-  , utils = require( 'utils' );
+var utils     = require( 'utils' )
+  , env       = utils.bootstrapEnv()
+  , moduleLdr = env.moduleLoader
+  , bgTasks   = require( 'classes' ).BackgroundTasks;
 
-// Bootstrap the environment
-var env = utils.bootstrapEnv();
+moduleLdr.on( 'modulesLoaded', function() {
+    module.exports = new bgTasks( env );
+});
 
-// Load all the modules
-env.moduleLoader.loadModules();
-
-// Launch our background process class
-GLOBAL.backgroundTasksClass = require( path.resolve( __dirname + '/../classes' ) + '/BackgroundTasks.js' );
-GLOBAL.backgroundTasks = new backgroundTasksClass( env );
+moduleLdr.loadModules();

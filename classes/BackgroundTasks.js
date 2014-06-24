@@ -1,4 +1,4 @@
-var Class = require( 'uberclass' )
+var Class = require( 'classes' ).Class
   , async = require( 'async' )
   , MemCached = require( 'memcached' )
   , moment = require( 'moment' )
@@ -7,28 +7,68 @@ var Class = require( 'uberclass' )
 
 module.exports = Class.extend(
 {
+    /**
+     * If set to true then this server is holding a lock for the current environment
+     * @type {Boolean}
+     */
     isMaster: null,
 
-    masterTasksAreRunning: null,
-
-    nonMastermasterTasksAreRunning: null,
-
+    /**
+     * The name of the key in Redis or Memcache that will be used to aquire a master lock
+     * @type {String}
+     */
     masterKey: null,
 
+    /**
+     * Unique key for this server
+     * @type {String}
+     */
     serverKey: null,
 
-    memcache: null,
-
+    /**
+     * The interval in milliseconds between running tasks
+     * @type {Number}
+     */
     interval: null,
 
+    /**
+     * Object containing both master and nonmaster tasks to run
+     * @type {Object}
+     */
     tasksToRun: {
         master: [],
         nomaster: []
     },
 
-    env: null,
+    /**
+     * Is there any master tasks currently running
+     * @type {Boolean}
+     */
+    masterTasksAreRunning: false,
 
+    /**
+     * Is there any non-master tasks currently running
+     * @type {[type]}
+     */
+    nonMastermasterTasksAreRunning: null,
+
+    /**
+     * Memcache server
+     * @type {Object}
+     */
+    memcache: null,
+
+    /**
+     * The configuration for this module
+     * @type {Object}
+     */
     config: null,
+
+    /**
+     * The environment as setup by utils.bootstrapEnv
+     * @type {Object}
+     */
+    env: null,
 
     init: function( env ) {
         debug( 'Constructor called' );
@@ -73,10 +113,10 @@ module.exports = Class.extend(
 
              // Wrap each class in a function that creates a new instance of that class with the required callback so we can do
              // async.parallel( this.tasksToRun.master, callback);
-             this.tasksToRun[ key ].push( function( callback ) {
+            this.tasksToRun[ key ].push( function( callback ) {
                 new ( tasks[ taskClassName ] )( callback );
-             }); 
-        };
+            });
+        }
 
         callback( null );
     },
@@ -105,9 +145,9 @@ module.exports = Class.extend(
                 while ( l-- ) {
                     item = this.config.tasks[ l ];
                     if( ( item.name == msg.task ) && ( tasks[ item.name ] !== undefined ) ){
-                         taskObj = tasks[ item.name ];
-                    };
-                };
+                        taskObj = tasks[ item.name ];
+                    }
+                }
             }
 
         }
@@ -116,11 +156,11 @@ module.exports = Class.extend(
             taskObj.startTask(function( err, result ){
                 
                 if( !err ){
-                    m['type'] = 'success';
-                    m['result'] = result;
+                    m.type = 'success';
+                    m.result = result;
                 }else{
-                    m['type'] = 'error';
-                    m['result'] = err;
+                    m.type = 'error';
+                    m.result = err;
                 }
                 
                 process.send(m);
@@ -201,7 +241,7 @@ module.exports = Class.extend(
         if ( this.isMaster ) {
             this.memcache.gets( this.masterKey, function( err, result ) {
                 if ( !err && result && result.cas ) {
-                    this.memcache.cas( this.masterKey, this.serverKey, result.cas, 30, function( casErr, casResult ) {
+                    this.memcache.cas( this.masterKey, this.serverKey, result.cas, 30, function( casErr ) {
                         if ( casErr ) {
                             debug( 'Cannot hold onto master lock.' );
                         } else {
@@ -238,7 +278,7 @@ module.exports = Class.extend(
     tasksAreCompleted : function( err ){
         debug( 'Master tasks have completed: %s', err );
         if ( err ) {
-           debug( err.stack );
+            debug( err.stack );
         }
 
         this.masterTasksAreRunning = false;
