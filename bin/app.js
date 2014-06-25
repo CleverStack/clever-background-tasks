@@ -2,24 +2,24 @@ var path    = require( 'path' )
   , cp      = require( 'child_process' )
   , bgTasks = null;
 
-function setupBackgroundTasks( debug ) {
+function setupBackgroundTasks( cluster, debug ) {
     debug( 'Setup background tasks...' );
 
     bgTasks = cp.fork( path.resolve( path.join( __dirname, 'manager.js' ) ) );
 
-    bgTasks.on( 'exit', setupBackgroundTasks.bind( this, debug ) );
+    bgTasks.on( 'exit', setupBackgroundTasks.bind( this, cluster, debug ) );
     bgTasks.on( 'message', function( msg ) {
-        msg.cmd = 'master';
-
         debug( '%s recieved message from bgTasks process...', process.pid );
-        if ( !msg.workerId ) {
+        if ( !msg.httpWorkerId ) {
 
             // We have no worker to send the message to, let the background tasks master know about it
-            bgTasks.send( msg );
+            // bgTasks.send( msg );
+            
+            debug( 'HTTP Worker that request task to be run is no longer active...' );
         } else {
 
-            // Send the Task result back to the process who sent the original message
-            cluster.workers[ msg.workerId ].send( msg );
+            debug( 'Sending task result to http worker %s', msg.httpWorkerId );
+            cluster.workers[ msg.httpWorkerId ].send( msg );
         }
     });
 }
@@ -30,21 +30,18 @@ module.exports = function( cluster, config, packageJson, debug ) {
 
             cluster.on( 'fork', function( worker ) {
                 worker.on( 'message', function( msg ) {
-                    debug( 'Received message from worker %s...', worker.id );
+                    debug( 'Received message from worker %s...', worker.process.pid );
                     
-                    if( msg.cmd == 'backgroundTask' && config[ 'clever-background-tasks' ] && config[ 'clever-background-tasks' ].on === true){
+                    if( msg.cmd == 'backgroundTask' ){
                         debug( 'Sending message to background tasks master process...' );
 
-                        bgTasks.send({
-                            cmd: 'master',
-                            task: msg.task,
-                            workerId: worker.id
-                        });
+                        msg.httpWorkerId = worker.id;
+                        bgTasks.send( msg );
                     }
                 });
             });
 
-            setupBackgroundTasks( debug );
+            setupBackgroundTasks( cluster, debug );
 
         }
     }

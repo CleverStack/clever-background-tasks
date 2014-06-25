@@ -15,7 +15,7 @@ function debug() {
 
 debug( 'Starting...' );
 
-process.on( 'message', function() {
+process.on( 'message', function( message ) {
     if ( !ready ) {
         debug( 'Not ready...' );
         process.send( { code: 'NOT_READY' } );
@@ -25,10 +25,11 @@ process.on( 'message', function() {
     } else {
         debug( 'Running task...' );
 
-        task = new ( tasks[ process.env.TASK_NAME ] )( function( err ) {
+        var payload = message.payload || {};
+        task = new ( tasks[ process.env.TASK_NAME ] )( payload, function( err, result ) {
             process.nextTick(function() {
                 task = null;
-                process.send( { code: 'RESULT', error: err } );
+                process.send( { code: 'RESULT', error: err, result: result } );
             });
         });
     }

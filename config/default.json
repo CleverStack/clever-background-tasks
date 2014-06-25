@@ -1,6 +1,6 @@
 {
 	"clever-background-tasks": {
-        "on" : false,
+        "on" : true,
 
         "interval": 2500,
 
@@ -13,7 +13,7 @@
             {
                 "name": "ExampleTask",
                 "parallel": true,
-                "numWorkers": 10
+                "numWorkers": 1
             }
         ],
 

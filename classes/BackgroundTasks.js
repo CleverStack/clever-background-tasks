@@ -88,6 +88,7 @@ var BackgroundTasks = Class.extend(
         worker.ready = false;
         worker.busy = false;
         worker.task = task;
+        worker.runningTask = null;
     },
 
     schedule: function() {
@@ -117,7 +118,7 @@ var BackgroundTasks = Class.extend(
     runTaskOnWorker: function( taskName, pid ) {
         var worker = this.workers[ taskName ][ pid ];
         if ( !!worker.ready && !worker.busy ) {
-            worker.send( {} );
+            worker.send( { payload: null } );
         }
     },
 
@@ -132,8 +133,45 @@ var BackgroundTasks = Class.extend(
     },
 
     masterIpcMessage: function( message ) {
-        switch( message.code ) {
+        switch( message.cmd ) {
 
+        case 'backgroundTask':
+            var workers     = this.workers[ message.task ]
+              , worker = false;
+
+
+            if ( workers !== undefined ) {
+                debug( 'Finding task process to use...' )
+
+                Object.keys( workers ).forEach( function( workerPid ) {
+                    var _worker = workers[ workerPid ];
+                    if ( worker === false && _worker.ready === true && _worker.busy === false ) {
+                        worker = _worker;
+                    }
+                });
+
+                if ( worker !== false ) {
+                    debug( 'Dispatching task to background process %s-%s...', message.task, worker.process.pid );
+
+                    worker.busy = true;
+                    worker.runningTask = message;
+                    worker.send( message );
+                } else {
+                    debug( 'Unable to find a free background process to use, trying again it 500ms...' );
+
+                    setTimeout( this.proxy( 'masterIpcMessage', message ), 500 );
+                }
+
+            } else {
+                debug( 'Unknown task...' );
+
+                message.error = 'Unknown task';
+                message.result = false;
+
+                process.send( message );
+            }
+
+            break;
         default:
             debug( 'Message from master %s', message );
             break;
@@ -164,8 +202,15 @@ var BackgroundTasks = Class.extend(
                 debug( 'Worker %s failed to process task...', worker.process.pid );
             }
 
-            if ( !!message.workerPid ) {
-                process.send( message );
+            if ( worker.runningTask !== null ) {
+                debug( 'Sending result back to httpWorker...' );
+
+                worker.runningTask.error = message.error;
+                worker.runningTask.result = message.result;
+
+                process.send( worker.runningTask );
+
+                worker.runningTask = null;
             }
             break;
         default:
