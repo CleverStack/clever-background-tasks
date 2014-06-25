@@ -1,0 +1,1 @@
+module.exports = new ( require( 'classes' ).BackgroundTasks )( require( 'config' ), require( 'cluster' ) );

@@ -5,7 +5,7 @@ var path    = require( 'path' )
 function setupBackgroundTasks( debug ) {
     debug( 'Setup background tasks...' );
 
-    bgTasks = cp.fork( path.resolve( path.join( __dirname, 'backgroundTasks.js' ) ) );
+    bgTasks = cp.fork( path.resolve( path.join( __dirname, 'manager.js' ) ) );
 
     bgTasks.on( 'exit', setupBackgroundTasks.bind( this, debug ) );
     bgTasks.on( 'message', function( msg ) {

@@ -1,291 +1,180 @@
 var Class = require( 'classes' ).Class
+  , path  = require( 'path' )
   , async = require( 'async' )
-  , MemCached = require( 'memcached' )
-  , moment = require( 'moment' )
-  , tasks = require( 'tasks' )
   , debug = require( 'debug' )( 'BackgroundTasks');
 
-module.exports = Class.extend(
+var BackgroundTasks = Class.extend(
 {
-    /**
-     * If set to true then this server is holding a lock for the current environment
-     * @type {Boolean}
-     */
-    isMaster: null,
+    instance: null,
 
-    /**
-     * The name of the key in Redis or Memcache that will be used to aquire a master lock
-     * @type {String}
-     */
-    masterKey: null,
+    getInstance: function( config, cluster ) {
+        if ( this.instance === null ) {
+            this.instance = new this( config, cluster );
+        }
 
-    /**
-     * Unique key for this server
-     * @type {String}
-     */
-    serverKey: null,
-
-    /**
-     * The interval in milliseconds between running tasks
-     * @type {Number}
-     */
-    interval: null,
-
-    /**
-     * Object containing both master and nonmaster tasks to run
-     * @type {Object}
-     */
-    tasksToRun: {
-        master: [],
-        nomaster: []
-    },
-
-    /**
-     * Is there any master tasks currently running
-     * @type {Boolean}
-     */
-    masterTasksAreRunning: false,
-
-    /**
-     * Is there any non-master tasks currently running
-     * @type {[type]}
-     */
-    nonMastermasterTasksAreRunning: null,
-
-    /**
-     * Memcache server
-     * @type {Object}
-     */
-    memcache: null,
-
-    /**
-     * The configuration for this module
-     * @type {Object}
-     */
+        return this.instance;
+    }
+},
+{
     config: null,
 
-    /**
-     * The environment as setup by utils.bootstrapEnv
-     * @type {Object}
-     */
-    env: null,
+    cluster: null,
 
-    init: function( env ) {
-        debug( 'Constructor called' );
-        this.env = env;
-        this.config = env.config['clever-background-tasks'];
-        this.isMaster = false;
-        this.masterTasksAreRunning = false;
-        this.nonMastermasterTasksAreRunning = false;
-        this.masterKey = process.env.NODE_ENV + '_backgroundTasks';
-        this.serverKey = Date.now() + Math.floor(Math.random()*1001); // @TODO - implement storing the server key in /tmp/serverKey
-        this.memcache = new MemCached( this.config.memcache.host )
+    workers: null,
 
-        //Process Messages coming from the cluster
-        process.on('message', this.proxy('handleMessage'));
+    interval: null,
 
-        // Setup and get processing
-        this.setupTasksAndStartMasterLoop();
-    },
+    setup: function( config, cluster ) {
+        debug( 'Setting up...' );
 
-    setupTasksAndStartMasterLoop : function( ){
-        async.series([
-            this.proxy( 'setupBackgroundTasks' ),
-            this.proxy( 'initMainLoop' )
-        ]);
-    },
-
-    setupBackgroundTasks : function( callback ){
-        debug( "Checking which tasks needs to run where" );
-
-        async.forEach(
-            this.config.tasks,
-            this.proxy( 'prepareTask', this.config ),
-            callback
-        );
-    },
-
-    prepareTask: function( cbt, item, callback ) {
-        var key = ( item.masterOnly && item.masterOnly === true ) ? 'master' : 'nomaster';
-        if( tasks[ item.name ] !== undefined ){
-            debug( 'Enabling task with name of ' + item.name );
-            var taskClassName = item.name;
-
-             // Wrap each class in a function that creates a new instance of that class with the required callback so we can do
-             // async.parallel( this.tasksToRun.master, callback);
-            this.tasksToRun[ key ].push( function( callback ) {
-                new ( tasks[ taskClassName ] )( callback );
+        try {
+            process.on( 'message', this.proxy( 'masterIpcMessage' ) );
+            this.workers = {};
+            this.config = config[ 'clever-background-tasks' ];
+            this.cluster = cluster;
+            this.cluster.setupMaster({
+                exec: path.resolve( path.join( __dirname, '..', 'bin', 'task.js' ) )
             });
+            this.cluster.on( 'exit', this.proxy( 'workerExited' ) );
+        } catch( e ) {
+            return [ e ];
         }
 
-        callback( null );
+        return [ null ];
     },
 
-    initMainLoop: function(  callback ) {
-        debug( "Initiate Main Loop" );
-        this.interval = setInterval( this.proxy( 'mainLoop' ), this.config.interval );
-        callback(null);
-    },
-
-    handleMessage: function( msg ){
-        // @TODO this needs to be refactored so it works, right now its not actually active or used
-        debug( 'Message from worker' );
-        var taskObj;
-        var m = { 
-            type   : 'error'
-        ,   result : 'invalid'
-        ,   wrkid  : ( !msg.wrkid ) ? null : msg.wrkid
-        ,   pid    : process.pid
-        };
-        
-        if( this.tasksToRun !== null ){
-            if( this.config.on ){
-                var l = this.config.tasks.length, item;
-
-                while ( l-- ) {
-                    item = this.config.tasks[ l ];
-                    if( ( item.name == msg.task ) && ( tasks[ item.name ] !== undefined ) ){
-                        taskObj = tasks[ item.name ];
-                    }
-                }
-            }
-
-        }
-
-        if( taskObj ){
-            taskObj.startTask(function( err, result ){
-                
-                if( !err ){
-                    m.type = 'success';
-                    m.result = result;
-                }else{
-                    m.type = 'error';
-                    m.result = err;
-                }
-                
-                process.send(m);
-            });
-        }else{
-            process.send(m);
-        }
-    },
-
-    mainLoop: function() {
-        // Handle non master tasks
-        if ( this.nonMastermasterTasksAreRunning === false ) {
-            this.nonMastermasterTasksAreRunning = true;
-            this.runTasks( this.proxy( 'nonMasterTasksAreCompleted' ) );
-        } else {
-            debug( 'Non master tasks have not finished running yet, waiting for them to finish');
-        }
-
-        if ( this.masterTasksAreRunning === false ) {
-            this.masterTasksAreRunning = true;
-
-            if ( this.isMaster !== true ) {
-                this.getMasterLock();
-            } else {
-                this.runMainLoop();
-            }
-
-        } else {
-            this.holdMasterLock();
-            debug( 'Master Tasks have not finished running yet, waiting for them to finish');
-        }
-    },
-
-    runMainLoop: function() {
-        debug( 'Running master tasks' );
-        
-        async.parallel(
-            [
-                this.proxy( 'runMasterTasks' )//,
-                // this.proxy( 'runTasks' )
-            ],
-            this.proxy( 'tasksAreCompleted' )
-        );
-    },
-
-    getMasterLock: function() {
-        this.memcache.gets( this.masterKey, this.proxy('handleGetMasterLock') );
-    },
-
-    handleGetMasterLock: function( err, result ) {
-        if ( err ) {
-            debug( 'Unable to gets the lock from memcache. Err: %s Result: %s', err, result );
-            this.runMainLoop();
-        } else if ( result === false ) {
-            this.memcache.add( this.masterKey, this.serverKey, ( ( this.config.interval / 100 ) * 2 ), function( addErr, addResult ) {
-                if ( addResult && !addErr ) {
-                    debug( 'Got master lock.' );
-                    this.isMaster = true;
-                } else {
-                    debug( 'Unable to add the lock key into memcache. Err: %s Result: %s', addErr, addResult );
-                }
-                this.runMainLoop();
-
-            }.bind(this));
-        } else {
-            if ( result && result[this.masterKey] === this.serverKey ) {
-                debug( 'Discovered that im the master.' );
-                this.isMaster = true;
-            } else {
-                debug( 'There is already a master holding the lock!' );
-            }
-            
-            this.runMainLoop();
-        }
-    },
-
-    holdMasterLock: function() {
-        if ( this.isMaster ) {
-            this.memcache.gets( this.masterKey, function( err, result ) {
-                if ( !err && result && result.cas ) {
-                    this.memcache.cas( this.masterKey, this.serverKey, result.cas, 30, function( casErr ) {
-                        if ( casErr ) {
-                            debug( 'Cannot hold onto master lock.' );
-                        } else {
-                            debug( 'Held onto master lock.');
-                        }
-                    }.bind( this ));
-                }
-            }.bind( this ));
-        }
-    },
-
-    runMasterTasks: function( callback ) {
-        if ( this.isMaster === true ) {
-            this.holdMasterLock();
-
-            debug( 'Run %s master tasks.', this.tasksToRun.master.length );
-            async.parallel(
-                this.tasksToRun.master,
-                callback
+    init: function( err ) {
+        if ( err === null ) {
+            async.forEach(
+                this.config.tasks,
+                this.proxy( 'startTaskWorkers' ),
+                this.proxy( 'schedule' )
             );
         } else {
-            callback( null );
+            throw new Error( 'Cannot start background tasks because of error: ' + err );
         }
     },
 
-    runTasks : function( callback ){
-        debug( 'Run %s non master tasks.', this.tasksToRun.nomaster.length );
-        async.parallel(
-            this.tasksToRun.nomaster,
-            callback
-        ); 
-    },
+    startTaskWorkers: function( task, callback ) {
+        var that = this
+          , numWorkers = task.numWorkers || 1
+          , workersOnline = 0;
 
-    tasksAreCompleted : function( err ){
-        debug( 'Master tasks have completed: %s', err );
-        if ( err ) {
-            debug( err.stack );
+        function workerOnline() {
+            that.registerWorker( this, task );
+
+            workersOnline++;
+            if ( workersOnline === task.numWorkers ) {
+                callback( null );
+            }
         }
 
-        this.masterTasksAreRunning = false;
+        if ( typeof this.workers[ task.name ] !== 'object' ) {
+            this.workers[ task.name ] = {};
+        }
+
+        for( var i = 0; i < numWorkers; i++ ) {
+            this.forkWorker( task, workerOnline );
+        }
     },
 
-    nonMasterTasksAreCompleted: function( err ) {
-        debug( 'Non master tasks have finished running with error: %s', err );
-        this.nonMastermasterTasksAreRunning = false;
+    forkWorker: function( task, callback ) {
+        this.cluster.fork( { 'TASK_NAME': task.name } ).on( 'online', callback );
+    },
+
+    registerWorker: function( worker, task ) {
+        this.workers[ task.name ][ worker.process.pid ] = worker;
+        worker.on( 'message', this.proxy( 'workerIpcMessage', worker ) );
+        worker.ready = false;
+        worker.busy = false;
+        worker.task = task;
+    },
+
+    schedule: function() {
+        if ( this.interval !== null ) {
+            clearInterval( this.interval );
+        }
+
+        this.interval = setInterval( this.proxy( 'run' ), this.config.interval );
+    },
+
+    run: function() {
+        debug( 'Running tasks...' );
+        async.each(
+            Object.keys( this.workers ),
+            this.proxy( 'runTaskWorkers' )
+        );
+    },
+
+    runTaskWorkers: function( taskName ) {
+        debug( 'Running '+ taskName + '...' );
+        async.each(
+            Object.keys( this.workers[ taskName ] ),
+            this.proxy( 'runTaskOnWorker', taskName )
+        );
+    },
+
+    runTaskOnWorker: function( taskName, pid ) {
+        var worker = this.workers[ taskName ][ pid ];
+        if ( !!worker.ready && !worker.busy ) {
+            worker.send( {} );
+        }
+    },
+
+    workerExited: function( worker ) {
+        var that = this;
+
+        delete this.workers[ worker.task.name ][ worker.process.pid ];
+
+        this.forkWorker( worker.task, function() {
+            that.registerWorker( this, worker.task );
+        });
+    },
+
+    masterIpcMessage: function( message ) {
+        switch( message.code ) {
+
+        default:
+            debug( 'Message from master %s', message );
+            break;
+        }
+    },
+
+    workerIpcMessage: function( worker, message ) {
+        switch( message.code ) {
+        
+        case 'READY':
+            debug( 'Worker %s is ready...', worker.process.pid );
+            worker.ready = true;
+            break;
+        case 'NOT_READY':
+            debug( 'Worker %s is not ready...', worker.process.pid );
+            worker.ready = false;
+            break;
+        case 'BUSY':
+            debug( 'Worker %s is busy...', worker.process.pid );
+            worker.busy = true;
+            break;
+        case 'RESULT':
+            worker.busy = false;
+            
+            if ( message.error === null ) {
+                debug( 'Worker %s has finished processing task...', worker.process.pid );
+            } else {
+                debug( 'Worker %s failed to process task...', worker.process.pid );
+            }
+
+            if ( !!message.workerPid ) {
+                process.send( message );
+            }
+            break;
+        default:
+            debug( 'Worker %s has sent a message we cannot understand (%s)', worker.process.pid, message );
+            break;
+        }
     }
 });
+
+module.exports = function( config, cluster ) {
+    return BackgroundTasks.getInstance( config, cluster );
+}

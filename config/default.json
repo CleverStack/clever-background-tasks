@@ -1,11 +1,20 @@
 {
 	"clever-background-tasks": {
-        "on" : true,
+        "on" : false,
 
         "interval": 2500,
 
         "tasks":[
-        	
+        	{
+                "name": "ExampleLockingTask",
+                "parallel": false,
+                "numWorkers": 1
+            },
+            {
+                "name": "ExampleTask",
+                "parallel": true,
+                "numWorkers": 10
+            }
         ],
 
         "driver": "memcache",
