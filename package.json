@@ -31,5 +31,8 @@
     "redis": "0.10.3",
     "moment": "~2.5.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "grunt": "~0.4.2",
+    "grunt-prompt": "~1.1.0"
+  }
 }

@@ -25,7 +25,7 @@ function setupBackgroundTasks( cluster, debug ) {
 }
 
 module.exports = function( cluster, config, packageJson, debug ) {
-    if ( packageJson.bundledDependencies.indexOf( 'clever-background-tasks' ) !== -1 && config[ 'clever-background-tasks' ].on === true ) {
+    if ( packageJson.bundledDependencies.indexOf( 'clever-background-tasks' ) !== -1 && config[ 'clever-background-tasks' ].enabled === true ) {
         if ( cluster.isMaster ) {
 
             cluster.on( 'fork', function( worker ) {
