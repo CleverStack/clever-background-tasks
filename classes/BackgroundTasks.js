@@ -182,24 +182,20 @@ var BackgroundTasks = Class.extend(
         switch( message.code ) {
         
         case 'READY':
-            debug( 'Worker %s is ready...', worker.process.pid );
+            debug( '%s is ready...', worker.process.pid );
             worker.ready = true;
             break;
         case 'NOT_READY':
-            debug( 'Worker %s is not ready...', worker.process.pid );
-            worker.ready = false;
+            debug( '%s is not ready...', worker.process.pid );
             break;
         case 'BUSY':
-            debug( 'Worker %s is busy...', worker.process.pid );
-            worker.busy = true;
+            debug( '%s is busy...', worker.process.pid );
             break;
         case 'RESULT':
-            worker.busy = false;
-            
-            if ( message.error === null ) {
-                debug( 'Worker %s has finished processing task...', worker.process.pid );
+            if ( message.error === undefined || message.error === null ) {
+                debug( '%s has finished processing task...', worker.process.pid );
             } else {
-                debug( 'Worker %s failed to process task...', worker.process.pid );
+                debug( '%s failed to process task...', worker.process.pid );
             }
 
             if ( worker.runningTask !== null ) {
@@ -208,13 +204,16 @@ var BackgroundTasks = Class.extend(
                 worker.runningTask.error = message.error;
                 worker.runningTask.result = message.result;
 
-                process.send( worker.runningTask );
+                process.send( worker.runningTask );   
 
                 worker.runningTask = null;
             }
+            
+            worker.busy = false;
+
             break;
         default:
-            debug( 'Worker %s has sent a message we cannot understand (%s)', worker.process.pid, message );
+            debug( '%s has sent a message we cannot understand (%s)', worker.process.pid, message );
             break;
         }
     }
