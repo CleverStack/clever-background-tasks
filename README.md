@@ -49,3 +49,7 @@ Simply add the following config to your /config/local.json (or into your global.
 3. Run `grunt prompt:cleverBackgroundTasksConfig` and fill in your configuration options.
 4. Run `grunt prompt:addBackgroundTask` to add any tasks to your running configuration.
 6. Run `grunt server` to start your application.
+
+## License
+
+See our [LICENSE](https://github.com/CleverStack/clever-background-tasks/blob/master/LICENSE)
