@@ -108,7 +108,6 @@ var BackgroundTasks = Class.extend(
     },
 
     runTaskWorkers: function( taskName ) {
-        debug( 'Running '+ taskName + '...' );
         async.each(
             Object.keys( this.workers[ taskName ] ),
             this.proxy( 'runTaskOnWorker', taskName )
@@ -116,9 +115,13 @@ var BackgroundTasks = Class.extend(
     },
 
     runTaskOnWorker: function( taskName, pid ) {
-        var worker = this.workers[ taskName ][ pid ];
-        if ( !!worker.ready && !worker.busy ) {
-            worker.send( { payload: null } );
+        if ( this.workers[ taskName ][ pid ].task.interval !== false ) {
+            debug( 'Running '+ taskName + '...' );
+            
+            var worker = this.workers[ taskName ][ pid ];
+            if ( !!worker.ready && !worker.busy ) {
+                worker.send( { payload: null } );
+            }
         }
     },
 
