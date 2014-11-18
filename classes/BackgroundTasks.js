@@ -1,7 +1,9 @@
-var Class = require( 'classes' ).Class
-  , path  = require( 'path' )
-  , async = require( 'async' )
-  , debug = require( 'debug' )( 'BackgroundTasks');
+var Class       = require( 'classes' ).Class
+  , path        = require( 'path' )
+  , async       = require( 'async' )
+  , injector    = require( 'injector' )
+  , redis       = require( 'redis' )
+  , debug       = require( 'debug' )( 'BackgroundTasks');
 
 var BackgroundTasks = Class.extend(
 {
@@ -24,14 +26,18 @@ var BackgroundTasks = Class.extend(
 
     interval: null,
 
+    isMaster: false,
+
     setup: function( config, cluster ) {
         debug( 'Setting up...' );
 
         try {
             process.on( 'message', this.proxy( 'masterIpcMessage' ) );
-            this.workers = {};
-            this.config = config[ 'clever-background-tasks' ];
-            this.cluster = cluster;
+
+            this.workers        = {};
+            this.config         = config[ 'clever-background-tasks' ];
+            this.cluster        = cluster;
+
             this.cluster.setupMaster({
                 exec: path.resolve( path.join( __dirname, '..', 'bin', 'task.js' ) )
             });
@@ -115,9 +121,10 @@ var BackgroundTasks = Class.extend(
     },
 
     runTaskOnWorker: function( taskName, pid ) {
-        if ( this.workers[ taskName ][ pid ].task.interval !== false ) {
+        var task = this.workers[ taskName ][ pid ].task;
+        if ( task.interval !== false && ( !task.masterOnly || !!task.masterOnly && !!this.isMaster ) ) {
             debug( 'Running '+ taskName + '...' );
-            
+
             var worker = this.workers[ taskName ][ pid ];
             if ( !!worker.ready && !worker.busy ) {
                 worker.send( { payload: null } );
