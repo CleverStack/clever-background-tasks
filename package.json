@@ -1,7 +1,7 @@
 {
   "name": "clever-background-tasks",
   "description": "Background processing for the CleverStack Framework",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "module.js",
   "author": {
     "name": "CleverStack",
