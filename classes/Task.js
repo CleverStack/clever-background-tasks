@@ -2,10 +2,10 @@ var Class = require( 'classes' ).Class;
 
 module.exports = Class.extend(
 {
-	setup: function( payload, callback ) {
-		this.payload = payload;
-		this.callback = callback;
+  setup: function( payload, callback ) {
+    this.payload = payload;
+    this.callback = callback;
 
-		return [ payload, callback ];
-	}
+    return [ payload, callback ];
+  }
 });

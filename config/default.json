@@ -1,23 +1,23 @@
 {
-	"clever-background-tasks": {
-        "enabled" : false,
+  "clever-background-tasks": {
+    "enabled" : false,
 
-        "interval": 2500,
+    "interval": 2500,
 
-        "tasks":[
-        	
-        ],
+    "tasks":[
+    
+    ],
 
-        "driver": "memcache",
+    "driver": "memcache",
 
-        "memcache": {
-        	"host": "localhost",
-            "port": "11211"
-        },
+    "memcache": {
+      "host": "localhost",
+      "port": "11211"
+      },
 
-        "redis": {
-            "host": "127.0.0.1",
-            "port": "6379"
-        }
+      "redis": {
+        "host": "127.0.0.1",
+        "port": "6379"
+      }
     }
-}
+  }
